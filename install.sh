@@ -38,6 +38,9 @@ Usage:
   --prefix <dir>
       The installation prefix for Gleam. By default, this is /usr/local/gleam which will result in a binary placed at /usr/local/gleam/bin/gleam.
 
+  --download
+      Always download from Github, ignoring cached versions
+
 EOF
 }
 
@@ -118,6 +121,7 @@ main() {
   fi
 
   unset \
+    DOWNLOAD \
     DRY_RUN \
     INSTALL_PREFIX \
     VERSION
@@ -126,6 +130,9 @@ main() {
     case "$1" in
     --dry-run)
       DRY_RUN=1
+      ;;
+    --download)
+      DOWNLOAD=1
       ;;
     --prefix)
       INSTALL_PREFIX="$(parse_arg "$@")"
@@ -215,7 +222,7 @@ fetch() {
   URL="$1"
   FILE="$2"
 
-  if [ -e "$FILE" ]; then
+  if [ -e "$FILE" ] && [ ! "$DOWNLOAD" ]; then
     echoh "+ Using version from cache: $FILE"
     return
   fi
@@ -230,15 +237,21 @@ fetch() {
 }
 
 install_from_github() {
-  if [ "${VERSION}" != "nightly" ]; then
+  unset DONOTCACHE
+  if [ "${VERSION}" == "nightly" ]; then
+    DOWNLOAD=1
+    DONOTCACHE=1
+  else
     VERSION="v$VERSION"
   fi
 
   echoh "Installing Gleam $VERSION from GitHub."
   echoh
 
+  CACHED_TAR="$CACHE_DIR/gleam-${VERSION}-${ARCH}-${LINKAGE}.tar.gz"
+
   fetch "https://github.com/gleam-lang/gleam/releases/download/${VERSION}/gleam-${VERSION}-${ARCH}-${LINKAGE}.tar.gz" \
-    "$CACHE_DIR/gleam-${VERSION}-${ARCH}-${LINKAGE}.tar.gz"
+    "$CACHED_TAR"
 
   # -w only works if the directory exists so try creating it first. If this
   # fails we can ignore the error as the -w check will then swap us to sudo.
@@ -248,7 +261,7 @@ install_from_github() {
     sh="sudo_sh_c"
   fi
 
-  sh_c tar -C "$CACHE_DIR" -xzf "$CACHE_DIR/gleam-${VERSION}-${ARCH}-${LINKAGE}.tar.gz"
+  sh_c tar -C "$CACHE_DIR" -xzf "$CACHED_TAR"
 
   "$sh" mkdir -p "$INSTALL_PREFIX/bin"
   BINARY_LOCATION="$INSTALL_PREFIX/bin/gleam"
@@ -258,6 +271,11 @@ install_from_github() {
   fi
   # Move the binary to the correct location.
   "$sh" mv "$CACHE_DIR/gleam" "$BINARY_LOCATION"
+
+  # Remove the tarball from the cache if needed
+  if [ "$DONOTCACHE" ]; then
+    rm "$CACHED_TAR"
+  fi
 
   echo_postinstall
 }
