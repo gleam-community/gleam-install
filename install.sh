@@ -234,7 +234,7 @@ fetch() {
   URL="$1"
   FILE="$2"
 
-  if [ -e "$FILE" ] && [ ! "$DOWNLOAD" ]; then
+  if [ -e "$FILE" ] && [ ! "${DOWNLOAD-}" ]; then
     echoh "+ Using version from cache: $FILE"
     return
   fi
