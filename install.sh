@@ -41,6 +41,9 @@ Usage:
   --download
       Always download from Github, ignoring cached versions
 
+  --binary-name <name>
+      The name of the binary. By default, this is gleam. Can be useful with the --version option for giving different versions different names.
+
 EOF
 }
 
@@ -60,11 +63,11 @@ echo_postinstall() {
 
 Gleam has been installed to
 
-  $INSTALL_PREFIX/bin/gleam
+  $BINARY_LOCATION
 
 EOF
 
-  GLEAM_COMMAND="$(command -v "gleam" || true)"
+  GLEAM_COMMAND="$(command -v "$BINARY_NAME" || true)"
 
   if [ -z "${GLEAM_COMMAND}" ]; then
     cath <<EOF
@@ -79,16 +82,16 @@ EOF
     cath <<EOF
 Try creating a new Gleam project!
 
-  $ gleam new example
+  $ $BINARY_NAME new example
   $ cd example/
 
 This will create a basic program that you can run
 
-  $ gleam run
+  $ $BINARY_NAME run
 
 Gleam also has built-in support for testing
 
-  $ gleam test
+  $ $BINARY_NAME test
 
 EOF
   fi
@@ -124,6 +127,7 @@ main() {
     DOWNLOAD \
     DRY_RUN \
     INSTALL_PREFIX \
+    BINARY_NAME \
     VERSION
 
   while [ "$#" -gt 0 ]; do
@@ -148,6 +152,13 @@ main() {
     --version=*)
       VERSION="$(parse_arg "$@")"
       ;;
+    --binary-name)
+      BINARY_NAME="$(parse_arg "$@")"
+      shift
+      ;;
+    --binary-name=*)
+      BINARY_NAME="$(parse_arg "$@")"
+      ;;
     -h | --h | -help | --help)
       usage
       exit 0
@@ -167,8 +178,9 @@ main() {
   ARCH=${GLEAM_INSTALL_ARCH:-$(arch)}
   LINKAGE=${GLEAM_INSTALL_LINKAGE:-$(linkage)}
 
-  # You can configure the install prefix with an environment variable, btw
+  # Fill in defaults for these if the flags were not set
   INSTALL_PREFIX=${INSTALL_PREFIX:-/usr/local/gleam}
+  BINARY_NAME=${BINARY_NAME:-gleam}
 
   CACHE_DIR=$(echo_cache_dir)
   VERSION=${VERSION:-$(echo_latest_version)}
@@ -264,7 +276,7 @@ install_from_github() {
   sh_c tar -C "$CACHE_DIR" -xzf "$CACHED_TAR"
 
   "$sh" mkdir -p "$INSTALL_PREFIX/bin"
-  BINARY_LOCATION="$INSTALL_PREFIX/bin/gleam"
+  BINARY_LOCATION="$INSTALL_PREFIX/bin/$BINARY_NAME"
   # Remove the file if it already exists to avoid macOS security issues
   if [ -f "$BINARY_LOCATION" ]; then
     "$sh" rm "$BINARY_LOCATION"
