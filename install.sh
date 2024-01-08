@@ -285,7 +285,7 @@ install_from_github() {
   "$sh" mv "$CACHE_DIR/gleam" "$BINARY_LOCATION"
 
   # Remove the tarball from the cache if needed
-  if [ "$DONOTCACHE" ]; then
+  if [ "${DONOTCACHE-}" ]; then
     rm "$CACHED_TAR"
   fi
 
